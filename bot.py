@@ -56,7 +56,7 @@ def send_telegram(msg):
             )
     except:
         pass
-
+send_telegram("🤖 Bot 2.0 has successfully booted up on Railway!")
 # =========================================================
 # GOOGLE SHEETS ASYNC FLUSHER (FROM WORKING V14)
 # =========================================================
