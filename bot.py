@@ -2,7 +2,7 @@ import os
 import time
 import json
 import requests
-import gspread
+import gspread 
 import numpy as np
 import pandas as pd
 from collections import defaultdict, deque
