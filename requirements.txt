@@ -1,0 +1,6 @@
+requests
+gspread
+numpy
+pandas
+google-auth
+
