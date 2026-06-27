@@ -1,6 +1,6 @@
 import os
 import time
-import json 
+import json
 import requests
 import gspread
 import numpy as np
