@@ -41,22 +41,26 @@ price_cache = {}
 # =========================================================
 # TELEGRAM (FROM WORKING V14)
 # =========================================================
-
 TOKEN = os.environ.get("TELEGRAM_TOKEN")
 CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 
 def send_telegram(msg):
     try:
         if TOKEN and CHAT_ID:
-            clean_token = str(TOKEN).replace("bot", "").strip()
-            requests.post(
+            # We use json= instead of data= for better handling of variable types
+            response = requests.post(
                 f"https://api.telegram.org/bot{TOKEN}/sendMessage",
-                data={"chat_id": CHAT_ID, "text": msg},
+                json={"chat_id": CHAT_ID, "text": msg},
                 timeout=10
             )
-    except:
-        pass
+            # This line will show us if Telegram rejected your token or chat ID
+            if not response.ok:
+                print(f"Telegram API Error: {response.text}")
+    except Exception as e:
+        print(f"Telegram network error: {e}")
+
 send_telegram("🤖 Bot 2.0 has successfully booted up on Railway!")
+
 # =========================================================
 # GOOGLE SHEETS ASYNC FLUSHER (FROM WORKING V14)
 # =========================================================
