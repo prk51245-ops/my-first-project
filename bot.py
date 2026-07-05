@@ -254,7 +254,7 @@ def open_trade(symbol, direction, entry, score, vol):
 
     # FIXED: Reordered mapping list to place "BOT 2" name and "OPEN" label in matching column metrics
     log_sheet([
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        timestamp(),
         "BOT 2",          # Matches column B
         symbol,           # Matches column C
         direction,        # Matches column D
@@ -290,7 +290,7 @@ def close_trade(symbol, price, reason):
     send_telegram(msg)
 
     log_sheet([
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        timestamp(),
         "BOT 2",
         symbol,
         direction,
@@ -350,7 +350,7 @@ if __name__ == "__main__":
     while True:
         try:
             flush_sheet()
-            print(f"\n--- Cycle Start: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ---")
+            print(f"\n--- Cycle Start: {timestamp()} ---")
             current_prices = {}
 
             for coin in COINS:
