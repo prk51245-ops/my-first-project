@@ -20,19 +20,6 @@ COINS = [
     "NEAR-USDT", "BTC-USDT", "ETH-USDT", "SOL-USDT"
 ]
 
-# =========================================================
-# TIME (NEW YORK)
-# =========================================================
-
-NY = ZoneInfo("America/New_York")
-
-def now():
-    return datetime.now(NY)
-
-def timestamp():
-    return now().strftime("%Y-%m-%d %H:%M:%S")
-
-
 CYCLE_SLEEP = 300  # 5 minutes
 MAX_OPEN_TRADES = 3
 ENTRY_COOLDOWN = 1800  # 30 min
