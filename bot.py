@@ -2,13 +2,13 @@ import os
 import time
 import json
 import requests
-import gspread 
+import gspread
 import numpy as np
 import pandas as pd
 from collections import defaultdict, deque
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from google.oauth2.service_account import Credentials
-
 # =========================================================
 # CONFIG (UPGRADED CORE CONFIGURATION)
 # =========================================================
@@ -19,6 +19,19 @@ COINS = [
     "VVV-USDT", "AR-USDT", "RENDER-USDT", "ICP-USDT",
     "NEAR-USDT", "BTC-USDT", "ETH-USDT", "SOL-USDT"
 ]
+
+# =========================================================
+# TIME (NEW YORK)
+# =========================================================
+
+NY = ZoneInfo("America/New_York")
+
+def now():
+    return datetime.now(NY)
+
+def timestamp():
+    return now().strftime("%Y-%m-%d %H:%M:%S")
+
 
 CYCLE_SLEEP = 300  # 5 minutes
 MAX_OPEN_TRADES = 3
