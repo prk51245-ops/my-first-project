@@ -74,11 +74,10 @@ def send_telegram(msg):
 
 send_telegram("🤖 Bot 2.0 has successfully booted up on Railway!")
 
-
-
-#==========================================================
-# GOOGLE SHEETS ASYNC FLUSHER (CONSOLIDATED MASTER ROUTE)
 # =========================================================
+# GOOGLE SHEETS ASYNC FLUSHER (FROM WORKING V14)
+# =========================================================
+
 sheet = None
 
 def flush_sheet():
@@ -93,31 +92,16 @@ def log_sheet(row):
     sheet_queue.append(row)
 
 try:
-    creds_json = (
-        os.environ.get("GOOGLE_CREDENTIALS_JSON") or 
-        os.environ.get("GOOGLE_CREDENTIALS") or 
-        os.environ.get("GOOGLE_CREDS_JSON")
-    )
+    creds_json = os.environ.get("GOOGLE_CREDENTIALS")
     if creds_json:
-        creds_dict = json.loads(creds_json.strip())
-        if "private_key" in creds_dict:
-            creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
-            
-        # FIXED: Core verification endpoints map cleanly to prevent auth 400 crashes
-        scopes = [
-            "https://googleapis.com",
-            "https://googleapis.com"
-        ]
-        creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
-        client = gspread.authorize(creds)
-        
-        # TARGETED: Changed key to match your master Bot 4/5 Spreadsheet dashboard explicitly
-        master_spreadsheet_id = "1lDJsm0sZCN1Kk_a3rvV4-QVF2IJ7BntP_Ovf6NgQums"
-        workbook = client.open_by_key(master_spreadsheet_id)
-        
-        # FIXED: Index selection connects to the first dashboard tab automatically
-        sheet = workbook.get_worksheet(0)
-        print("Sheets connected OK to Master Dashboard")
+        creds = Credentials.from_service_account_info(
+            json.loads(creds_json),
+            scopes=["https://www.googleapis.com/auth/spreadsheets"]
+        )
+        sheet = gspread.authorize(creds)\
+            .open_by_key("1uJPJ_CFBW_qU9mpqoHVS3oAgPH3Cg6ZzATFv1zd4S64")\
+            .sheet1
+        print("Sheets connected OK")
     else:
         print("Sheets disabled")
 except Exception as e:
@@ -127,6 +111,7 @@ except Exception as e:
 # =========================================================
 # BULLETPROOF DATA FEED MATRIX (FROM WORKING V14)
 # =========================================================
+
 def safe_get(url):
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
@@ -144,18 +129,22 @@ def safe_get(url):
 def fetch(symbol):
     try:
         ticker = str(symbol).strip().upper()
+
         if "-" not in ticker and "USDT" in ticker:
             ticker = ticker.replace("USDT", "-USDT")
+
         if ticker == "TON-USDT":
             ticker = "TONCOIN-USDT"
 
-        url = f"https://kucoin.com{ticker}"
+        url = f"https://api.kucoin.com/api/v1/market/candles?type=5min&symbol={ticker}"
+
         data = safe_get(url)
 
         if not data or "data" not in data or data["data"] is None:
             return price_cache.get(symbol)
 
         closes = []
+
         for i in data["data"][:120]:
             try:
                 closes.append(float(i[2]))
@@ -163,12 +152,14 @@ def fetch(symbol):
                 continue
 
         print(f"{symbol}: Parsed {len(closes)} candles")
+
         if len(closes) < 50:
             return price_cache.get(symbol)
 
         closes.reverse()
         price_cache[symbol] = closes
         return closes
+
     except Exception as e:
         print(f"{symbol} fetch error:", e)
         return price_cache.get(symbol)
@@ -176,6 +167,7 @@ def fetch(symbol):
 # =========================================================
 # INDICATORS (FROM WORKING V14 METRIC WEIGHTS)
 # =========================================================
+
 def ema(data, period):
     series = pd.Series(data).dropna()
     if len(series) < period:
@@ -197,6 +189,7 @@ def volatility(data):
 # =========================================================
 # UPGRADED SCORE ENGINE (NEW BOT CORE BIAS)
 # =========================================================
+
 def calculate_score(e21, e50, rsi_val, vol, price, prev_price):
     if e21 > e50:
         score = 3
@@ -223,15 +216,18 @@ def calculate_score(e21, e50, rsi_val, vol, price, prev_price):
 
     return round(score, 2)
 
+
 # =========================================================
 # POSITION OPERATIONS (NEW UPGRADED BOT EXECUTION)
 # =========================================================
-def open_trade(symbol, direction, entry, score, vol, rsi_val):
+
+def open_trade(symbol, direction, entry, score, vol):
     if len(trades) >= MAX_OPEN_TRADES:
         return
     if time.time() - last_entry[symbol] < ENTRY_COOLDOWN:
         return
 
+    # Dynamic volatility padding scale
     multiplier = max(1.0, vol / 0.0025)
     sl_pct = abs(SL_BASE) * multiplier
     tp_pct = TP_BASE * multiplier
@@ -248,124 +244,155 @@ def open_trade(symbol, direction, entry, score, vol, rsi_val):
         "score": score,
         "time": time.time(),
         "highest_price": entry,
-        "lowest_price": entry,
-        "rsi": rsi_val
+        "lowest_price": entry
     }
 
     last_entry[symbol] = time.time()
-    msg = f"📌 BOT 2 MIGRATED SETUP\n{symbol} {direction} Opened\nScore: {score}\nVol: {vol:.5f}\nEntry: {entry:.4f}\nSL: {sl:.4f}\nTP: {tp:.4f}"
+
+    msg = f"📌 BOT 2 UPGRADED\n{symbol} {direction} Opened\nScore: {score}\nVol: {vol:.5f}\nEntry: {entry:.4f}\nSL: {sl:.4f}\nTP: {tp:.4f}"
     send_telegram(msg)
 
-    # FIXED: Re-mapped array strings to insert perfectly into the unified master 14-column layout
-    now_ny = datetime.now(NY)
+    # FIXED: Reordered mapping list to place "BOT 2" name and "OPEN" label in matching column metrics
     log_sheet([
-        "BOT 2",                                      # A: BOT NAME
-        now_ny.strftime("%Y-%m-%d"),                  # B: DATE
-        now_ny.strftime("%H:%M:%S"),                  # C: TIME
-        symbol,                                       # D: COIN
-        "LONG" if direction == "LONG" else "SHORT",   # E: DIRECTION
-        int(score),                                   # F: SCORE
-        round(float(entry), 4),                       # G: ENTRY PRICE
-        round(float(sl), 4),                          # H: S/L
-        round(float(tp), 4),                          # I: T/P
-        round(float(rsi_val), 2),                     # J: RSI
-        "N/A",                                        # K: Z-SCORE 
-        "N/A",                                        # L: ADX 
-        "OPEN",                                       # M: STATUS
-        "N/A"                                         # N: PnL%
+        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "BOT 2",          # Matches column B
+        symbol,           # Matches column C
+        direction,        # Matches column D
+        f"{score:.1f}%",  # Matches column E (Score Placement)
+        "OPEN",           # Matches column F (Status Placement)
+        float(entry),     # Matches column G (Entry Price)
+        float(sl),        # Matches column H (Stop Loss Price)
+        float(tp)         # Matches column I (Take Profit Price)
     ])
 
 def close_trade(symbol, price, reason):
+
     if symbol not in trades:
         return
+
     t = trades[symbol]
     entry = t["entry"]
     direction = t["direction"]
-    
-    pnl_pct = ((price - entry) / entry) * 100.0 if direction == "LONG" else ((entry - price) / entry) * 100.0
-    msg = f"🏁 BOT 2 POSITION CLOSED\n{symbol} Closed ({reason})\nExit Price: {price:.4f}\nPnL: {pnl_pct:.2f}%"
+
+    pnl = (
+        ((price - entry) / entry) * 100
+        if direction == "LONG"
+        else ((entry - price) / entry) * 100
+    )
+
+    msg = (
+        f"🚨 BOT 2 UPGRADED CLOSED\n"
+        f"{symbol} Closed\n"
+        f"Result: {reason}\n"
+        f"PnL: {pnl:.2f}%"
+    )
+
     send_telegram(msg)
 
-    now_ny = datetime.now(NY)
     log_sheet([
+        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         "BOT 2",
-        now_ny.strftime("%Y-%m-%d"),
-        now_ny.strftime("%H:%M:%S"),
         symbol,
-        "LONG" if direction == "LONG" else "SHORT",
-        int(t["score"]),
-        round(float(entry), 4),
-        round(float(t["entry"] * (1 - (t["sl_pct"] / 100)) if direction == "LONG" else t["entry"] * (1 + (t["sl_pct"] / 100))), 4),  
-        round(float(t["entry"] * (1 + (t["tp_pct"] / 100)) if direction == "LONG" else t["entry"] * (1 - (t["tp_pct"] / 100))), 4),
-        round(float(t["rsi"]), 2),
-        "N/A",
-        "N/A",
-        "CLOSED",                                     # M: STATUS
-        f"{pnl_pct:.2f}%"                             # N: Net PnL% Return
+        direction,
+        f"{t['score']:.1f}%",
+        reason,
+        float(entry),
+        float(price),
+        f"{pnl:.2f}%"
     ])
+
+    # REMOVE THE POSITION
     del trades[symbol]
 
+    print(f"{symbol} removed from active trades")
+
+  # =========================================================
+# UPGRADED TRADE MANAGEMENT (V14 HYBRID TRAILING STOP)
 # =========================================================
-# CORE CORE TICK LOOP LAYER RUNNER
+
+def manage_trade(symbol, price):
+    if symbol not in trades:
+        return
+    t = trades[symbol]
+
+    pnl = ((price - t["entry"]) / t["entry"]) * 100
+    if t["direction"] == "SHORT":
+        pnl = -pnl
+
+    if pnl >= t["tp_pct"]:
+        close_trade(symbol, price, "TAKE PROFIT")
+        return
+
+    if t["direction"] == "LONG":
+        if price > t["highest_price"]:
+            t["highest_price"] = price
+        current_sl_price = t["highest_price"] * (1 - (t["sl_pct"] / 100))
+        if price <= current_sl_price:
+            close_trade(symbol, price, "TRAILING STOP LOSS")
+
+    elif t["direction"] == "SHORT":
+        if price < t["lowest_price"]:
+            t["lowest_price"] = price
+        current_sl_price = t["lowest_price"] * (1 + (t["sl_pct"] / 100))
+        if price >= current_sl_price:
+            close_trade(symbol, price, "TRAILING STOP LOSS")
+
+    if time.time() - t["time"] > MAX_HOLD_TIME:
+        close_trade(symbol, price, "TIMEOUT")
+
 # =========================================================
-def run_scanner():
-    print(f"[{timestamp()}] Kicking off processing loop for {len(COINS)} tokens...")
-    for coin in COINS:
-        try:
-            data = fetch(coin)
-            if not data or len(data) < 60:
-                continue
-            
-            price = data[-1]
-            prev_price = data[-2]
-            
-            e21 = ema(data, 21)
-            e50 = ema(data, 50)
-            rsi_val = rsi(data)
-            vol = volatility(data)
-            
-            if not e21 or not e50 or not rsi_val:
-                continue
-                
-            score = calculate_score(e21, e50, rsi_val, vol, price, prev_price)
-            
-            # --- EVALUATE EXITS IF TRADED ---
-            if coin in trades:
-                t = trades[coin]
-                elapsed = time.time() - t["time"]
-                
-                if t["direction"] == "LONG":
-                    t["highest_price"] = max(t["highest_price"], price)
-                    if price <= t["entry"] * (1 - (t["sl_pct"] / 100)):
-                        close_trade(coin, price, "SL HIT")
-                    elif price >= t["entry"] * (1 + (t["tp_pct"] / 100)):
-                        close_trade(coin, price, "TP HIT")
-                    elif elapsed > MAX_HOLD_TIME:
-                        close_trade(coin, price, "TIME EXPIRED")
-                else:
-                    t["lowest_price"] = min(t["lowest_price"], price)
-                    if price >= t["entry"] * (1 + (t["sl_pct"] / 100)):
-                        close_trade(coin, price, "SL HIT")
-                    elif price <= t["entry"] * (1 - (t["tp_pct"] / 100)):
-                        close_trade(coin, price, "TP HIT")
-                    elif elapsed > MAX_HOLD_TIME:
-                        close_trade(coin, price, "TIME EXPIRED")
-                continue
-                
-            # --- EVALUATE ENTRIES ---
-            if score >= 6:
-                open_trade(coin, "LONG", price, score, vol, rsi_val)
-            elif score <= -6:
-                open_trade(coin, "SHORT", price, score, vol, rsi_val)
-                
-        except Exception as e:
-            print(f"Error checking strategy state for {coin}: {e}")
+# MAIN LOOP UNBROKEN MATRIX (V14 ARCHITECTURE ENGINE)
+# =========================================================
 
 if __name__ == "__main__":
-    print(f"[{timestamp()}] Starting Bot 2 execution container...")
+    send_telegram("🚀 Upgraded Bot 2 Online (V14 Fixed Core Engine Live)")
+
     while True:
-        run_scanner()
-        # Empty background queue rows into spreadsheet sequentially 
-        for _ in range(len(sheet_queue)):
+        try:
             flush_sheet()
-        time.sleep(CYCLE_SLEEP)
+            print(f"\n--- Cycle Start: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ---")
+            current_prices = {}
+
+            for coin in COINS:
+                closes = fetch(coin)
+                print(f"{coin}: {'OK' if closes else 'NO DATA'}")
+                if not closes:
+                    continue
+
+                price = closes[-1]
+                prev_price = closes[-2]
+                current_prices[coin] = price
+
+                # Check if a position is running and manage it with live candle ticks
+                if coin in trades:
+                    manage_trade(coin, price)
+                    continue
+
+                e21 = ema(closes, 21)
+                e50 = ema(closes, 50)
+                rsi_val = rsi(closes)
+                vol = volatility(closes)
+
+                if None in [e21, e50, rsi_val, vol]:
+                    continue
+
+                score = calculate_score(e21, e50, rsi_val, vol, price, prev_price)
+                print(
+                    f"{coin} Price={price:.4f} "
+                    f"Score={score} "
+                    f"RSI={rsi_val:.1f} "
+                    f"Vol={vol:.5f} "
+                    f"EMA21={e21:.4f} "
+                    f"EMA50={e50:.4f}"
+                )
+                if score >= 8.5:
+                    open_trade(coin, "LONG", price, score, vol)
+                elif score <= -8.5:
+                    open_trade(coin, "SHORT", price, score, vol)
+
+            print(f"Cycle finished. Active trades: {len(trades)}. Sleeping...")
+            time.sleep(CYCLE_SLEEP)
+
+        except Exception as e:
+            print("MAIN LOOP FAULT PREVENTED:", e)
+            time.sleep(10)
