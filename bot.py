@@ -77,7 +77,6 @@ send_telegram("🤖 Bot 2.0 has successfully booted up on Railway!")
 # =========================================================
 # GOOGLE SHEETS ASYNC FLUSHER (FROM WORKING V14)
 # =========================================================
-
 sheet = None
 
 def flush_sheet():
@@ -92,16 +91,41 @@ def log_sheet(row):
     sheet_queue.append(row)
 
 try:
-    creds_json = os.environ.get("GOOGLE_CREDENTIALS")
+    creds_json = (
+        os.environ.get("GOOGLE_CREDENTIALS_JSON") or 
+        os.environ.get("GOOGLE_CREDENTIALS") or 
+        os.environ.get("GOOGLE_CREDS_JSON")
+    )
     if creds_json:
-        creds = Credentials.from_service_account_info(
-            json.loads(creds_json),
-            scopes=["https://www.googleapis.com/auth/spreadsheets"]
-        )
-        sheet = gspread.authorize(creds)\
-            .open_by_key("1uJPJ_CFBW_qU9mpqoHVS3oAgPH3Cg6ZzATFv1zd4S64")\
-            .sheet1
-        print("Sheets connected OK")
+        # SANITIZATION LAYER: Strip hidden wrappers or raw single quotes passed by hosting setups
+        raw_json_str = creds_json.strip()
+        if raw_json_str.startswith("'") and raw_json_str.endswith("'"):
+            raw_json_str = raw_json_str[1:-1]
+        if raw_json_str.startswith('"') and raw_json_str.endswith('"'):
+            raw_json_str = raw_json_str[1:-1]
+            
+        import re
+        raw_json_str = re.sub(r'\s+', ' ', raw_json_str)
+        creds_dict = json.loads(raw_json_str)
+        
+        if "private_key" in creds_dict:
+            creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
+            
+        # Core permission scopes explicitly targeting the spreadsheet engines
+        scopes = [
+            "https://googleapis.com",
+            "https://googleapis.com"
+        ]
+        creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+        client = gspread.authorize(creds)
+        
+        # TARGETED: Migrated to your master Bot 4/5 spreadsheet key explicitly
+        master_spreadsheet_id = "1lDJsm0sZCN1Kk_a3rvV4-QVF2IJ7BntP_Ovf6NgQums"
+        workbook = client.open_by_key(master_spreadsheet_id)
+        
+        # FIXED: Position index selection prevents name argument token failures
+        sheet = workbook.get_worksheet(0)
+        print("Sheets connected OK to Master Dashboard")
     else:
         print("Sheets disabled")
 except Exception as e:
