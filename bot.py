@@ -113,8 +113,8 @@ try:
             
         # Core permission scopes explicitly targeting the spreadsheet engines
         scopes = [
-            "https://googleapis.com",
-            "https://googleapis.com"
+            "https://WWW.googleapis.com/auth/spreadsheets",
+            "https://WWW.googleapis.com/auth/drive"
         ]
         creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
         client = gspread.authorize(creds)
