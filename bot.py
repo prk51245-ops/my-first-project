@@ -89,6 +89,18 @@ def flush_sheet():
         print("SHEET ERROR:", e)
 
 def log_sheet(row):
+    try:
+        if sheet:
+            sheet.append_row(row)
+    except Exception as e:
+        print("SHEET ERROR:", e)
+
+    try:
+        sheet.append_row(sheet_queue.popleft())
+    except Exception as e:
+        print("SHEET ERROR:", e)
+
+def log_sheet(row):
     sheet_queue.append(row)
 
 try:
