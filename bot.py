@@ -203,18 +203,15 @@ def calculate_score(e21, e50, rsi_val, vol, price, prev_price):
 
     return round(score, 2)
 
-
 # =========================================================
 # POSITION OPERATIONS (NEW UPGRADED BOT EXECUTION)
 # =========================================================
-
-def open_trade(symbol, direction, entry, score, vol):
+def open_trade(symbol, direction, entry, score, vol, rsi_val):
     if len(trades) >= MAX_OPEN_TRADES:
         return
     if time.time() - last_entry[symbol] < ENTRY_COOLDOWN:
         return
 
-    # Dynamic volatility padding scale
     multiplier = max(1.0, vol / 0.0025)
     sl_pct = abs(SL_BASE) * multiplier
     tp_pct = TP_BASE * multiplier
@@ -231,69 +228,68 @@ def open_trade(symbol, direction, entry, score, vol):
         "score": score,
         "time": time.time(),
         "highest_price": entry,
-        "lowest_price": entry
+        "lowest_price": entry,
+        "rsi": rsi_val
     }
 
     last_entry[symbol] = time.time()
-
-    msg = f"📌 BOT 2 UPGRADED\n{symbol} {direction} Opened\nScore: {score}\nVol: {vol:.5f}\nEntry: {entry:.4f}\nSL: {sl:.4f}\nTP: {tp:.4f}"
+    msg = f"📌 BOT 2 MIGRATED SETUP\n{symbol} {direction} Opened\nScore: {score}\nVol: {vol:.5f}\nEntry: {entry:.4f}\nSL: {sl:.4f}\nTP: {tp:.4f}"
     send_telegram(msg)
 
-    # FIXED: Reordered mapping list to place "BOT 2" name and "OPEN" label in matching column metrics
+    # RESTRUCTURED ROW LAYOUT SCHEMA (Matches Bot 4 perfectly)
+    now_ny = datetime.now(NY)
     log_sheet([
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "BOT 2",          # Matches column B
-        symbol,           # Matches column C
-        direction,        # Matches column D
-        f"{score:.1f}%",  # Matches column E (Score Placement)
-        "OPEN",           # Matches column F (Status Placement)
-        float(entry),     # Matches column G (Entry Price)
-        float(sl),        # Matches column H (Stop Loss Price)
-        float(tp)         # Matches column I (Take Profit Price)
+        "BOT 2",                                      # A: BOT NAME
+        now_ny.strftime("%Y-%m-%d"),                  # B: DATE
+        now_ny.strftime("%H:%M:%S"),                  # C: TIME
+        symbol,                                       # D: COIN
+        "LONG" if direction == "LONG" else "SHORT",   # E: DIRECTION
+        int(score),                                   # F: SCORE
+        round(float(entry), 4),                       # G: ENTRY PRICE
+        round(float(sl), 4),                          # H: S/L
+        round(float(tp), 4),                          # I: T/P
+        round(float(rsi_val), 2),                     # J: RSI
+        "N/A",                                        # K: Z-SCORE
+        "N/A",                                        # L: ADX
+        "OPEN",                                       # M: STATUS
+        "N/A"                                         # N: PnL%
     ])
 
 def close_trade(symbol, price, reason):
-
     if symbol not in trades:
         return
-
     t = trades[symbol]
     entry = t["entry"]
     direction = t["direction"]
-
-    pnl = (
-        ((price - entry) / entry) * 100
-        if direction == "LONG"
-        else ((entry - price) / entry) * 100
-    )
-
-    msg = (
-        f"🚨 BOT 2 UPGRADED CLOSED\n"
-        f"{symbol} Closed\n"
-        f"Result: {reason}\n"
-        f"PnL: {pnl:.2f}%"
-    )
-
+    
+    pnl_pct = ((price - entry) / entry) * 100.0 if direction == "LONG" else ((entry - price) / entry) * 100.0
+    msg = f"🏁 BOT 2 POSITION CLOSED\n{symbol} Closed ({reason})\nExit Price: {price:.4f}\nPnL: {pnl_pct:.2f}%"
     send_telegram(msg)
 
-    log_sheet([
-        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-        "BOT 2",
-        symbol,
-        direction,
-        f"{t['score']:.1f}%",
-        reason,
-        float(entry),
-        float(price),
-        f"{pnl:.2f}%"
-    ])
+    # RESTRUCTURED ROW LAYOUT SCHEMA (Matches Bot 4 perfectly)
+    now_ny = datetime.now(NY)
+    original_sl = entry * (1 - (t["sl_pct"] / 100)) if direction == "LONG" else entry * (1 + (t["sl_pct"] / 100))
+    original_tp = entry * (1 + (t["tp_pct"] / 100)) if direction == "LONG" else entry * (1 - (t["tp_pct"] / 100))
 
-    # REMOVE THE POSITION
+    log_sheet([
+        "BOT 2",                                      # A: BOT NAME
+        now_ny.strftime("%Y-%m-%d"),                  # B: DATE
+        now_ny.strftime("%H:%M:%S"),                  # C: TIME
+        symbol,                                       # D: COIN
+        "LONG" if direction == "LONG" else "SHORT",   # E: DIRECTION
+        int(t["score"]),                              # F: SCORE
+        round(float(entry), 4),                       # G: ENTRY PRICE
+        round(float(original_sl), 4),                 # H: S/L
+        round(float(original_tp), 4),                 # I: T/P
+        round(float(t["rsi"]), 2),                    # J: RSI
+        "N/A",                                        # K: Z-SCORE
+        "N/A",                                        # L: ADX
+        "CLOSED",                                     # M: STATUS
+        f"{pnl_pct:.2f}%"                             # N: PnL%
+    ])
     del trades[symbol]
 
-    print(f"{symbol} removed from active trades")
-
-  # =========================================================
+# =========================================================
 # UPGRADED TRADE MANAGEMENT (V14 HYBRID TRAILING STOP)
 # =========================================================
 
