@@ -293,8 +293,8 @@ def close_trade(symbol, price, reason):
         "LONG" if direction == "LONG" else "SHORT",   # E: SIDE (LONG/SHORT)
         int(t["score"]),                              # F: SCORE
         round(float(entry), 5),                       # G: ENTRY PRICE
-        round(float(original_tp), 5),                 # H: T/P
-        round(float(original_sl), 5),                 # I: S/L
+        round(float(original_sl), 5),                 # H: S/L
+        round(float(original_tp), 5),                 # I: T/P
         round(float(t["rsi"]), 2),                    # J: RSI
         "N/A",                                        # K: Z-SCORE
         "N/A",                                        # L: ADX
@@ -373,44 +373,10 @@ if __name__ == "__main__":
                 if None in [e21, e50, rsi_val, vol]:
                     continue
 
-               try:
-                        if sheet is not None:
-                            now_ny = now()
-                            date_str = now_ny.strftime("%Y-%m-%d")
-                            time_str = now_ny.strftime("%H:%M:%S")
-                            
-                            score_val = signal.get("score", 0)
-                            
-                            row = [
-                                "BOT 2",                                               # A: BOT
-                                date_str,                                              # B: DATE
-                                time_str,                                              # C: TIME
-                                symbol,                                                # D: COIN
-                                signal["side"],                                        # E: SIDE
-                                int(score_val),                                        # F: SCORE
-                                signal["entry"],                                       # G: ENTRY
-                                signal["sl"],                                          # H: S/L
-                                signal["tp"],                                          # I: T/P 
-                                signal.get("rsi") if signal.get("rsi") is not None else "N/A",  # J: RSI
-                                signal.get("z") if signal.get("z") is not None else "N/A",      # K: Z-Score
-                                signal.get("adx") if signal.get("adx") is not None else "N/A",  # L: ADX
-                                "OPEN",                                                # M: STATUS
-                                "N/A"                                                  # N: PnL%
-                            ]
-                            
-                            sheet.append_row(row)
-                            print(f"[{date_str} {time_str}] 
-                        else:
-                            print("Sheets not ready - skipping log")
-                    except Exception as e:
-                        print("Sheets Write Error:", e)
-
-                print(f"Finished {symbol}")
-                time.sleep(1.5)
-                if score >= 4.5:
-                    open_trade(coin, "LONG", price, score, vol)
-                elif score <= -4.5:
-                    open_trade(coin, "SHORT", price, score, vol)
+                if score >= 8.5:
+                    open_trade(coin, "LONG", price, score, vol, rsi_val)
+                elif score <= -8.5:
+                    open_trade(coin, "SHORT", price, score, vol, rsi_val)
 
             print(f"Cycle finished. Active trades: {len(trades)}. Sleeping...")
             time.sleep(CYCLE_SLEEP)
