@@ -226,7 +226,7 @@ def open_trade(symbol, direction, entry, score, vol, rsi_val):
     if time.time() - last_entry[symbol] < ENTRY_COOLDOWN:
         return
 
-    multiplier = max(1.0, vol / 0.01),3.0)
+    multiplier = max(1.0, vol / 0.01), 3.0)
     sl_pct = abs(SL_BASE) * multiplier
     tp_pct = TP_BASE * multiplier
 
@@ -260,8 +260,8 @@ def open_trade(symbol, direction, entry, score, vol, rsi_val):
         "LONG" if direction == "LONG" else "SHORT",   # E: SIDE (LONG/SHORT)
         int(score),                                   # F: SCORE (Raw clean integer)
         round(float(entry), 5),                       # G: ENTRY PRICE
-        round(float(tp), 5),                          # H: T/P (Aligned with Bot 4)
-        round(float(sl), 5),                          # I: S/L (Aligned with Bot 4)
+        round(float(sl), 5),                          # H: S/L (Aligned with Bot 4)
+        round(float(tp), 5),                          # I: T/P (Aligned with Bot 4)
         round(float(rsi_val), 2),                     # J: RSI
         "N/A",                                        # K: Z-SCORE (Bot 2 bypass placeholder)
         "N/A",                                        # L: ADX (Bot 2 bypass placeholder)
