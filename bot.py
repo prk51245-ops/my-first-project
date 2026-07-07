@@ -382,9 +382,9 @@ if __name__ == "__main__":
                     f"EMA21={e21:.4f} "
                     f"EMA50={e50:.4f}"
                 )
-                if score >= 8.5:
+                if score >= 4.5:
                     open_trade(coin, "LONG", price, score, vol)
-                elif score <= -8.5:
+                elif score <= -4.5:
                     open_trade(coin, "SHORT", price, score, vol)
 
             print(f"Cycle finished. Active trades: {len(trades)}. Sleeping...")
