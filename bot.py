@@ -373,15 +373,40 @@ if __name__ == "__main__":
                 if None in [e21, e50, rsi_val, vol]:
                     continue
 
-                score = calculate_score(e21, e50, rsi_val, vol, price, prev_price)
-                print(
-                    f"{coin} Price={price:.4f} "
-                    f"Score={score} "
-                    f"RSI={rsi_val:.1f} "
-                    f"Vol={vol:.5f} "
-                    f"EMA21={e21:.4f} "
-                    f"EMA50={e50:.4f}"
-                )
+               try:
+                        if sheet is not None:
+                            now_ny = now()
+                            date_str = now_ny.strftime("%Y-%m-%d")
+                            time_str = now_ny.strftime("%H:%M:%S")
+                            
+                            score_val = signal.get("score", 0)
+                            
+                            row = [
+                                "BOT 2",                                               # A: BOT
+                                date_str,                                              # B: DATE
+                                time_str,                                              # C: TIME
+                                symbol,                                                # D: COIN
+                                signal["side"],                                        # E: SIDE
+                                int(score_val),                                        # F: SCORE
+                                signal["entry"],                                       # G: ENTRY
+                                signal["sl"],                                          # H: S/L
+                                signal["tp"],                                          # I: T/P 
+                                signal.get("rsi") if signal.get("rsi") is not None else "N/A",  # J: RSI
+                                signal.get("z") if signal.get("z") is not None else "N/A",      # K: Z-Score
+                                signal.get("adx") if signal.get("adx") is not None else "N/A",  # L: ADX
+                                "OPEN",                                                # M: STATUS
+                                "N/A"                                                  # N: PnL%
+                            ]
+                            
+                            sheet.append_row(row)
+                            print(f"[{date_str} {time_str}] 
+                        else:
+                            print("Sheets not ready - skipping log")
+                    except Exception as e:
+                        print("Sheets Write Error:", e)
+
+                print(f"Finished {symbol}")
+                time.sleep(1.5)
                 if score >= 4.5:
                     open_trade(coin, "LONG", price, score, vol)
                 elif score <= -4.5:
