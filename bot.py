@@ -99,7 +99,7 @@ try:
             scopes=["https://www.googleapis.com/auth/spreadsheets"]
         )
         sheet = gspread.authorize(creds)\
-            .open_by_key("1uJPJ_CFBW_qU9mpqoHVS3oAgPH3Cg6ZzATFv1zd4S64")\
+            .open_by_key("1lDJsm0sZCN1kK_a3rvV4-QVF2IJ7BntP_Ovf6NgQums")\
             .sheet1
         print("Sheets connected OK")
     else:
