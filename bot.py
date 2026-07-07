@@ -226,7 +226,7 @@ def open_trade(symbol, direction, entry, score, vol, rsi_val):
     if time.time() - last_entry[symbol] < ENTRY_COOLDOWN:
         return
 
-    multiplier = max(1.0, vol / 0.01), 3.0)
+    multiplier = max(1.0, vol / 0.01)
     sl_pct = abs(SL_BASE) * multiplier
     tp_pct = TP_BASE * multiplier
 
