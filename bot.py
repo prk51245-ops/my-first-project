@@ -2,13 +2,13 @@ import os
 import time
 import json
 import requests
-import gspread 
+import gspread
 import numpy as np
 import pandas as pd
 from collections import defaultdict, deque
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from google.oauth2.service_account import Credentials
-
 # =========================================================
 # CONFIG (UPGRADED CORE CONFIGURATION)
 # =========================================================
@@ -19,6 +19,19 @@ COINS = [
     "VVV-USDT", "AR-USDT", "RENDER-USDT", "ICP-USDT",
     "NEAR-USDT", "BTC-USDT", "ETH-USDT", "SOL-USDT"
 ]
+
+# =========================================================
+# TIME (NEW YORK)
+# =========================================================
+
+NY = ZoneInfo("America/New_York")
+
+def now():
+    return datetime.now(NY)
+
+def timestamp():
+    return now().strftime("%Y-%m-%d %H:%M:%S")
+
 
 CYCLE_SLEEP = 300  # 5 minutes
 MAX_OPEN_TRADES = 3
@@ -61,10 +74,10 @@ def send_telegram(msg):
 
 send_telegram("🤖 Bot 2.0 has successfully booted up on Railway!")
 
-# =========================================================
-# GOOGLE SHEETS ASYNC FLUSHER (FROM WORKING V14)
-# =========================================================
 
+# =========================================================
+# GOOGLE SHEETS 
+# =========================================================
 sheet = None
 
 def flush_sheet():
@@ -79,16 +92,30 @@ def log_sheet(row):
     sheet_queue.append(row)
 
 try:
-    creds_json = os.environ.get("GOOGLE_CREDENTIALS")
+    creds_json = (
+        os.environ.get("GOOGLE_CREDENTIALS_JSON") or 
+        os.environ.get("GOOGLE_CREDENTIALS") or 
+        os.environ.get("GOOGLE_CREDS_JSON")
+    )
     if creds_json:
-        creds = Credentials.from_service_account_info(
-            json.loads(creds_json),
-            scopes=["https://www.googleapis.com/auth/spreadsheets"]
-        )
-        sheet = gspread.authorize(creds)\
-            .open_by_key("1lDJsm0sZCN1kK_a3rvV4-QVF2IJ7BntP_Ovf6NgQums")\
-            .sheet1
-        print("Sheets connected OK")
+        creds_dict = json.loads(creds_json.strip())
+        if "private_key" in creds_dict:
+            creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
+            
+        scopes = [
+            "https://googleapis.com",
+            "https://googleapis.com"
+        ]
+        creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+        client = gspread.authorize(creds)
+        
+        # TARGETED: Migrated to your master Bot 4/5 spreadsheet key explicitly
+        master_spreadsheet_id = "1lDJsm0sZCN1Kk_a3rvV4-QVF2IJ7BntP_Ovf6NgQums"
+        workbook = client.open_by_key(master_spreadsheet_id)
+        
+        # FIXED: Position index selection prevents name argument syntax errors
+        sheet = workbook.get_worksheet(0)
+        print("Sheets connected OK to Master Dashboard")
     else:
         print("Sheets disabled")
 except Exception as e:
@@ -203,9 +230,11 @@ def calculate_score(e21, e50, rsi_val, vol, price, prev_price):
 
     return round(score, 2)
 
+
 # =========================================================
 # POSITION OPERATIONS (NEW UPGRADED BOT EXECUTION)
 # =========================================================
+
 def open_trade(symbol, direction, entry, score, vol, rsi_val):
     if len(trades) >= MAX_OPEN_TRADES:
         return
@@ -229,14 +258,14 @@ def open_trade(symbol, direction, entry, score, vol, rsi_val):
         "time": time.time(),
         "highest_price": entry,
         "lowest_price": entry,
-        "rsi": rsi_val
+        "rsi": rsi_val  # Store for closing row
     }
 
     last_entry[symbol] = time.time()
-    msg = f"📌 BOT 2 MIGRATED SETUP\n{symbol} {direction} Opened\nScore: {score}\nVol: {vol:.5f}\nEntry: {entry:.4f}\nSL: {sl:.4f}\nTP: {tp:.4f}"
+    msg = f"📌 BOT 2 POSITION MIGRATED\n{symbol} {direction} Opened\nScore: {score}\nVol: {vol:.5f}\nEntry: {entry:.4f}\nSL: {sl:.4f}\nTP: {tp:.4f}"
     send_telegram(msg)
 
-    # RESTRUCTURED ROW LAYOUT SCHEMA (Matches Bot 4 perfectly)
+    # FIXED SCHEMA: Rearranged to match Bot 4 precisely (G: Entry, H: TP, I: SL)
     now_ny = datetime.now(NY)
     log_sheet([
         "BOT 2",                                      # A: BOT NAME
@@ -246,8 +275,8 @@ def open_trade(symbol, direction, entry, score, vol, rsi_val):
         "LONG" if direction == "LONG" else "SHORT",   # E: DIRECTION
         int(score),                                   # F: SCORE
         round(float(entry), 4),                       # G: ENTRY PRICE
-        round(float(sl), 4),                          # H: S/L
-        round(float(tp), 4),                          # I: T/P
+        round(float(tp), 4),                          # H: T/P (Swapped to match Bot 4)
+        round(float(sl), 4),                          # I: S/L (Swapped to match Bot 4)
         round(float(rsi_val), 2),                     # J: RSI
         "N/A",                                        # K: Z-SCORE
         "N/A",                                        # L: ADX
@@ -266,21 +295,21 @@ def close_trade(symbol, price, reason):
     msg = f"🏁 BOT 2 POSITION CLOSED\n{symbol} Closed ({reason})\nExit Price: {price:.4f}\nPnL: {pnl_pct:.2f}%"
     send_telegram(msg)
 
-    # RESTRUCTURED ROW LAYOUT SCHEMA (Matches Bot 4 perfectly)
+    # FIXED SCHEMA: Rearranged to match Bot 4 precisely (G: Entry, H: TP, I: SL)
     now_ny = datetime.now(NY)
     original_sl = entry * (1 - (t["sl_pct"] / 100)) if direction == "LONG" else entry * (1 + (t["sl_pct"] / 100))
     original_tp = entry * (1 + (t["tp_pct"] / 100)) if direction == "LONG" else entry * (1 - (t["tp_pct"] / 100))
 
     log_sheet([
-        "BOT 2",                                      # A: BOT NAME
-        now_ny.strftime("%Y-%m-%d"),                  # B: DATE
-        now_ny.strftime("%H:%M:%S"),                  # C: TIME
-        symbol,                                       # D: COIN
-        "LONG" if direction == "LONG" else "SHORT",   # E: DIRECTION
-        int(t["score"]),                              # F: SCORE
-        round(float(entry), 4),                       # G: ENTRY PRICE
-        round(float(original_sl), 4),                 # H: S/L
-        round(float(original_tp), 4),                 # I: T/P
+        "BOT 2",
+        now_ny.strftime("%Y-%m-%d"),
+        now_ny.strftime("%H:%M:%S"),
+        symbol,
+        "LONG" if direction == "LONG" else "SHORT",
+        int(t["score"]),
+        round(float(entry), 4),
+        round(float(original_tp), 4),                 # H: T/P (Swapped to match Bot 4)
+        round(float(original_sl), 4),                 # I: S/L (Swapped to match Bot 4)
         round(float(t["rsi"]), 2),                    # J: RSI
         "N/A",                                        # K: Z-SCORE
         "N/A",                                        # L: ADX
@@ -333,7 +362,7 @@ if __name__ == "__main__":
     while True:
         try:
             flush_sheet()
-            print(f"\n--- Cycle Start: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ---")
+            print(f"\n--- Cycle Start: {timestamp()} ---")
             current_prices = {}
 
             for coin in COINS:
@@ -346,7 +375,6 @@ if __name__ == "__main__":
                 prev_price = closes[-2]
                 current_prices[coin] = price
 
-                # Check if a position is running and manage it with live candle ticks
                 if coin in trades:
                     manage_trade(coin, price)
                     continue
@@ -368,10 +396,13 @@ if __name__ == "__main__":
                     f"EMA21={e21:.4f} "
                     f"EMA50={e50:.4f}"
                 )
-                if score >= 4.5:
-                    open_trade(coin, "LONG", price, score, vol)
-                elif score <= -4.5:
-                    open_trade(coin, "SHORT", price, score, vol)
+                
+                # FIXED GATES: Passes rsi_val correctly to prevent TypeError runtime crashes
+                # Enforces your strict elite criteria filters safely (>= 8.5)
+                if score >= 8.5:
+                    open_trade(coin, "LONG", price, score, vol, rsi_val)
+                elif score <= -8.5:
+                    open_trade(coin, "SHORT", price, score, vol, rsi_val)
 
             print(f"Cycle finished. Active trades: {len(trades)}. Sleeping...")
             time.sleep(CYCLE_SLEEP)
