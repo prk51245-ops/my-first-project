@@ -359,8 +359,6 @@ if __name__ == "__main__":
                 price = closes[-1]
                 prev_price = closes[-2]
                 current_prices[coin] = price
-
-                # Check if a position is running and manage it with live candle ticks
                 if coin in trades:
                     manage_trade(coin, price)
                     continue
@@ -369,10 +367,24 @@ if __name__ == "__main__":
                 e50 = ema(closes, 50)
                 rsi_val = rsi(closes)
                 vol = volatility(closes)
-
+            
                 if None in [e21, e50, rsi_val, vol]:
                     continue
-
+                                      
+                # FIXED: Moved calculate_score ABOVE the print statement so it exists first
+                score = calculate_score(e21, e50, rsi_val, vol, price, prev_price) 
+                
+                print(
+                    f"{coin} Price={price:.4f} "
+                    f"Score={score} "
+                    f"RSI={rsi_val:.1f} "
+                    f"Vol={vol:.5f} "
+                    f"EMA21={e21:.4f} "
+                    f"EMA50={e50:.4f}"
+                )
+            
+                # Enforces your strict elite criteria filters safely (>= 8.5)
+                # CHANGE to 4.5 here if you are still pushing quick trades to test layout!
                 if score >= 8.5:
                     open_trade(coin, "LONG", price, score, vol, rsi_val)
                 elif score <= -8.5:
