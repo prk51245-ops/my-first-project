@@ -9,6 +9,7 @@ from collections import defaultdict, deque
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 from google.oauth2.service_account import Credentials
+sheets = None
 # =========================================================
 # CONFIG (UPGRADED CORE CONFIGURATION)
 # =========================================================
