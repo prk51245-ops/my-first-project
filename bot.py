@@ -358,7 +358,6 @@ if __name__ == "__main__":
 
     while True:
         try:
-            flush_sheet()
             print(f"\n--- Cycle Start: {timestamp()} ---")
             current_prices = {}
 
