@@ -9,7 +9,6 @@ from collections import defaultdict, deque
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 from google.oauth2.service_account import Credentials
-sheets = None
 # =========================================================
 # CONFIG (UPGRADED CORE CONFIGURATION)
 # =========================================================
@@ -80,26 +79,19 @@ send_telegram("🤖 Bot 2.0 has successfully booted up on Railway!")
 # =========================================================
 
 sheet = None
+sheet_queue = deque()
 
 def flush_sheet():
     if not sheet or not sheet_queue:
         return
+
     try:
-        sheet.append_row(sheet_queue.popleft())
+        row = sheet_queue.popleft()
+        sheet.append_row(row)
+        print("Sheet row written")
     except Exception as e:
         print("SHEET ERROR:", e)
 
-def log_sheet(row):
-    try:
-        if sheet:
-            sheet.append_row(row)
-    except Exception as e:
-        print("SHEET ERROR:", e)
-
-    try:
-        sheet.append_row(sheet_queue.popleft())
-    except Exception as e:
-        print("SHEET ERROR:", e)
 
 def log_sheet(row):
     sheet_queue.append(row)
@@ -363,14 +355,17 @@ if __name__ == "__main__":
             current_prices = {}
 
             for coin in COINS:
+
                 closes = fetch(coin)
                 print(f"{coin}: {'OK' if closes else 'NO DATA'}")
+
                 if not closes:
                     continue
 
                 price = closes[-1]
                 prev_price = closes[-2]
                 current_prices[coin] = price
+
                 if coin in trades:
                     manage_trade(coin, price)
                     continue
@@ -379,13 +374,19 @@ if __name__ == "__main__":
                 e50 = ema(closes, 50)
                 rsi_val = rsi(closes)
                 vol = volatility(closes)
-            
+
                 if None in [e21, e50, rsi_val, vol]:
                     continue
-                                      
-                # FIXED: Moved calculate_score ABOVE the print statement so it exists first
-                score = calculate_score(e21, e50, rsi_val, vol, price, prev_price) 
-                
+
+                score = calculate_score(
+                    e21,
+                    e50,
+                    rsi_val,
+                    vol,
+                    price,
+                    prev_price
+                )
+
                 print(
                     f"{coin} Price={price:.4f} "
                     f"Score={score} "
@@ -394,13 +395,15 @@ if __name__ == "__main__":
                     f"EMA21={e21:.4f} "
                     f"EMA50={e50:.4f}"
                 )
-            
-                # Enforces your strict elite criteria filters safely (>= 8.5)
-                # CHANGE to 4.5 here if you are still pushing quick trades to test layout!
+
                 if score >= 8.5:
                     open_trade(coin, "LONG", price, score, vol, rsi_val)
+
                 elif score <= -8.5:
                     open_trade(coin, "SHORT", price, score, vol, rsi_val)
+
+            # AFTER ALL COINS HAVE BEEN SCANNED
+            flush_sheet()
 
             print(f"Cycle finished. Active trades: {len(trades)}. Sleeping...")
             time.sleep(CYCLE_SLEEP)
